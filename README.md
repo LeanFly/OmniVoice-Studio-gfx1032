@@ -143,6 +143,71 @@ Three flagships, five more headliners, and a dozen under the fold.
 
 ---
 
+<a id="gfx1032-docker"></a>
+
+## AMD RX 6600 / RX 6600 XT（gfx1032）Docker 版本
+
+本仓库是 OmniVoice Studio 的 **gfx1032 专用版本**，适用于 Linux 上的
+AMD Radeon RX 6600 和 RX 6600 XT。它使用原生 gfx1032 ROCm PyTorch，
+不要使用 gfx1030 映射。
+
+### 前提条件
+
+- Linux 主机已经安装 Docker。
+- AMD amdgpu 内核驱动正常。
+- 主机存在 /dev/kfd 和 /dev/dri：
+
+~~~bash
+ls -l /dev/kfd /dev/dri
+~~~
+
+### 1. 获取源码
+
+~~~bash
+git clone https://github.com/LeanFly/OmniVoice-Studio-gfx1032.git
+cd OmniVoice-Studio-gfx1032
+~~~
+
+### 2. 编译 Docker 镜像
+
+~~~bash
+docker build -f Dockerfile.gfx1032 -t omnivoice:gfx1032 .
+~~~
+
+构建过程会自动检查 ROCm PyTorch、原生 gfx1032 内核、TorchCodec、
+Python 开发头文件以及 WhisperX/TorchAudio 兼容性。构建输出中的 targets
+必须包含 gfx1032。
+
+### 3. 运行
+
+~~~bash
+docker run -d --name omnivoice-gfx1032 --restart unless-stopped --device /dev/kfd --device /dev/dri -p 3900:3900 -v omnivoice-data:/app/omnivoice_data omnivoice:gfx1032
+~~~
+
+浏览器打开：
+
+~~~text
+http://设备IP:3900
+~~~
+
+如果浏览器就在主机上，也可以打开 http://127.0.0.1:3900。
+
+### 4. 验证 GPU
+
+~~~bash
+docker exec omnivoice-gfx1032 python -c "import torch; print('torch:', torch.__version__); print('HIP:', torch.version.hip); print('GPU available:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0))"
+~~~
+
+网页“设置 → 系统”中应显示：
+
+- Compute device：cuda (AMD Radeon RX 6600/6600 XT)
+- GPU routing：omnivoice → rocm (accelerated)
+
+ROCm 版 PyTorch 同样使用 torch.cuda 接口，因此这里显示 cuda 是正常的。
+模型和用户数据保存在 **omnivoice-data** Docker 卷中，重建容器不会丢失。
+
+---
+
 <a id="quickstart"></a>
 
 ## ⚡ Quickstart
