@@ -742,9 +742,9 @@ def check_device_compatibility():
         return False, (
             f"{device_name} ({device_arch}) is not supported by this ROCm "
             f"PyTorch build. Supported architectures: {', '.join(arch_list)}. "
-            f"Set HSA_OVERRIDE_GFX_VERSION to the closest supported target "
-            f"(e.g. 11.0.0 for a gfx11xx card) or install a ROCm build that "
-            f"lists {device_arch}."
+            f"Install a ROCm build that lists {device_arch}; do not force a "
+            f"different architecture unless the GPU vendor documents it as "
+            f"compatible."
         )
     return False, (
         f"{device_name} ({device_arch}) is not supported by this PyTorch build. "

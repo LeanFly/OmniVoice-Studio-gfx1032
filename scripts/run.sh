@@ -72,7 +72,9 @@ LOG_FILE="$LOG_DIR/omnivoice-run.log"
 PORT=3900
 echo "${C_OK}▸${C_RST} Starting backend on port ${PORT} (log: ${C_DIM}${LOG_FILE}${C_RST})…"
 
-uv run uvicorn main:app --app-dir backend --host 127.0.0.1 --port "$PORT" \
+# install.sh owns dependency synchronization. Avoid replacing an explicitly
+# installed ROCm/device-specific torch build with the CUDA wheel from uv.lock.
+uv run --no-sync uvicorn main:app --app-dir backend --host 127.0.0.1 --port "$PORT" \
     >"$LOG_FILE" 2>&1 &
 BACKEND_PID=$!
 

@@ -96,15 +96,23 @@ the CUDA tags exactly.
 > auto-sets `HSA_OVERRIDE_GFX_VERSION` when — and only when — your card's GFX
 > ID is missing from the shipped ROCm build's architecture list, so try
 > without any override first. Overriding a natively-supported GPU (gfx1151 on
-> ROCm 7.x, for example) only forces it onto foreign kernels. If the GPU still
-> isn't used, force it explicitly with `-e HSA_OVERRIDE_GFX_VERSION=11.0.0`
-> (user-set on the container — it is deliberately **not** baked into the
-> image, because the right value depends on your card); a value you set is
-> always respected as-is.
+> ROCm 7.x, for example) only forces it onto foreign kernels. RX 6600/6600 XT
+> (`gfx1032`) is never auto-remapped to gfx1030 because that combination can
+> crash; the current image falls back to CPU unless its PyTorch architecture
+> list contains native `gfx1032` kernels. A value you explicitly set is still
+> respected as-is.
 >
 > **Rootless / non-root hosts:** if `/dev/kfd` is group-owned, the container
 > user needs those groups too — add `--group-add` for your host's `render` and
 > `video` GIDs (`getent group render video`).
+
+RX 6600/6600 XT (`gfx1032`) requires the native TheRock device package. Build
+the dedicated image from the repository root; its build-time guard fails if
+the resulting PyTorch installation does not contain `gfx1032`:
+
+```bash
+docker build -f Dockerfile.gfx1032 -t omnivoice:gfx1032 .
+```
 
 Verify the container sees the GPU:
 
@@ -210,7 +218,7 @@ Two paths are worth persisting across container restarts:
 - **GPU not detected (AMD):** make sure you pulled the `:rocm` tag (the default
   image is CUDA-only) and passed `--device /dev/kfd --device /dev/dri`. Check
   the container sees the card with
-  `docker exec omnivoice rocminfo | grep -i gfx`; on RDNA3 consumer cards try
-  `-e HSA_OVERRIDE_GFX_VERSION=11.0.0` — see
+  `docker exec omnivoice rocminfo | grep -i gfx`, then check PyTorch's native
+  targets with `docker exec omnivoice python -c 'import torch; print(torch.cuda.get_arch_list())'` — see
   [Pull and run (AMD GPU / ROCm)](#pull-and-run-amd-gpu--rocm) above.
 - More entries: [docs/install/troubleshooting.md](troubleshooting.md).

@@ -71,8 +71,10 @@ ROCM_GFX_OVERRIDES = {
     "gfx1150": "gfx1100", "gfx1151": "gfx1100",
     # RDNA 3 (RX 7000 series) — override to gfx1100
     "gfx1101": "gfx1100", "gfx1102": "gfx1100", "gfx1103": "gfx1100",
-    # RDNA 2 (RX 6000 series) — override to gfx1030
-    "gfx1031": "gfx1030", "gfx1032": "gfx1030", "gfx1034": "gfx1030",
+    # RDNA 2 (RX 6000 series) — override to gfx1030. gfx1032 is deliberately
+    # excluded: RX 6600/6600 XT can crash on gfx1030 code objects and now has
+    # a native device-gfx1032 build in AMD's multi-arch ROCm packages.
+    "gfx1031": "gfx1030", "gfx1034": "gfx1030",
     # Vega (RX Vega / Radeon VII) — override to gfx900 / gfx906
     "gfx902": "gfx900", "gfx906": "gfx906",
 }

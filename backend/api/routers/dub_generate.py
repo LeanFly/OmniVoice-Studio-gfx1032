@@ -6,6 +6,7 @@ import time
 import asyncio
 import torch
 import torchaudio
+import soundfile as sf
 from fastapi import APIRouter, HTTPException
 
 from core.db import db_conn
@@ -350,8 +351,7 @@ async def dub_generate(job_id: str, req: DubRequest):
             if isinstance(entry[2], torch.Tensor):
                 return int(entry[2].shape[-1])
             try:
-                info = torchaudio.info(entry[2])
-                return int(info.num_frames)
+                return int(sf.info(entry[2]).frames)
             except Exception:
                 wav, _sr = torchaudio.load(entry[2])
                 n = int(wav.shape[-1])

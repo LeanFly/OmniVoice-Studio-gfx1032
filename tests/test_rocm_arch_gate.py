@@ -14,6 +14,7 @@ These tests pin the CUDA/ROCm-aware comparison (``core.device_caps
 from __future__ import annotations
 
 import types
+from pathlib import Path
 
 import pytest
 
@@ -90,6 +91,16 @@ def test_rocm_gpu_we_can_remap_is_not_a_mismatch():
     torch = _torch(hip="6.2", capability=(11, 2), gcn_arch="gfx1102",
                    arch_list=["gfx1030", "gfx1100"])
     assert device_caps.arch_unsupported(torch) is None
+
+
+def test_gfx1032_requires_native_kernels_instead_of_gfx1030_remap():
+    """RX 6600/6600 XT can crash on gfx1030 code objects. AMD publishes a
+    native device-gfx1032 package, so an old wheel must fall back to CPU rather
+    than being treated as compatible through HSA_OVERRIDE_GFX_VERSION.
+    """
+    torch = _torch(hip="6.4", capability=(10, 3), gcn_arch="gfx1032",
+                   device_name="AMD Radeon RX 6600 XT", arch_list=["gfx1030"])
+    assert device_caps.arch_unsupported(torch) == ("gfx1032", ("gfx1030",))
 
 
 def test_a_remap_target_the_build_lacks_is_still_a_mismatch():
@@ -244,6 +255,46 @@ def test_override_applied_when_build_lacks_the_arch(monkeypatch):
                arch_list=["gfx1030", "gfx1100"])
     )
     assert os.environ.get("HSA_OVERRIDE_GFX_VERSION") == "11.0.0"
+
+
+def test_gfx1032_is_never_auto_remapped_to_gfx1030():
+    import os
+
+    import services.model_manager as mm
+
+    mm._configure_rocm_if_needed(
+        _torch(hip="6.4", capability=(10, 3), gcn_arch="gfx1032",
+               device_name="AMD Radeon RX 6600 XT", arch_list=["gfx1030"])
+    )
+    assert "HSA_OVERRIDE_GFX_VERSION" not in os.environ
+
+
+def test_source_launcher_preserves_device_specific_torch_install():
+    launcher = Path(__file__).resolve().parents[1] / "scripts" / "run.sh"
+    assert "uv run --no-sync uvicorn" in launcher.read_text(encoding="utf-8")
+
+
+def test_gfx1032_dockerfile_prunes_cuda_tree_and_requires_native_kernels():
+    dockerfile = Path(__file__).resolve().parents[1] / "Dockerfile.gfx1032"
+    source = dockerfile.read_text(encoding="utf-8")
+    assert "--prune torch" in source
+    assert "--prune torchaudio" in source
+    assert "--no-emit-package torch" not in source
+    assert "libpython3.12t64" in source
+    assert "libpython3.12-dev" in source
+    assert "sysconfig.get_path('include')" in source
+    assert "Python.h" in source
+    assert "import accelerate, os, subprocess, sysconfig, torch, torchaudio, torchcodec" in source
+    assert "subprocess.check_output(['rocm-sdk', 'targets']" in source
+    assert "assert 'gfx1032' in targets" in source
+
+
+def test_gfx1032_dockerfile_validates_whisperx_torchaudio_compat():
+    dockerfile = Path(__file__).resolve().parents[1] / "Dockerfile.gfx1032"
+    source = dockerfile.read_text(encoding="utf-8")
+    assert "install_legacy_io_compat(torchaudio)" in source
+    assert "import whisperx" in source
+    assert "hasattr(torchaudio, 'AudioMetaData')" in source
 
 
 def test_no_override_when_the_target_is_also_missing():

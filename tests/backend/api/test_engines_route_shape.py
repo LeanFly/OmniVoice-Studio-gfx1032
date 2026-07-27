@@ -150,12 +150,14 @@ def test_omnivoice_entry_has_in_process_isolation_mode(fresh_app):
     assert by_id["omnivoice"]["isolation_mode"] == "in-process"
 
 
-def test_gpu_compat_omnivoice_has_cuda_mps_cpu(fresh_app):
-    """OmniVoice ships with CUDA/MPS/CPU paths — surface that in the matrix."""
+def test_gpu_compat_omnivoice_has_cuda_rocm_mps_cpu(fresh_app):
+    """OmniVoice ships with CUDA/ROCm/MPS/CPU paths; surface them."""
     client = _client(fresh_app)
     r = client.get("/engines")
     by_id = {b["id"]: b for b in r.json()["tts"]["backends"]}
-    assert set(by_id["omnivoice"]["gpu_compat"]) == {"cuda", "mps", "cpu"}
+    assert set(by_id["omnivoice"]["gpu_compat"]) == {
+        "cuda", "rocm", "mps", "cpu",
+    }
 
 
 # ── select_engine host-routing gate (no silent CPU fallback) ────────────────

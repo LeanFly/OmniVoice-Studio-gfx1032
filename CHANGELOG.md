@@ -27,6 +27,7 @@ The bundled TTS model package (`pyproject.toml`) is versioned independently.
 - AMD/ROCm: every ROCm host was silently force-routed to the CPU — the compatibility gate compared a CUDA `sm_` tag against a ROCm build's `gfx` list, which can never match — thanks @simmessa! (#1228)
 - AMD/ROCm: `torch.compile` was disabled on all AMD hosts by the same mismatched comparison (#1228)
 - AMD/ROCm: `HSA_OVERRIDE_GFX_VERSION` is auto-set only when your card genuinely needs it and the remap target exists in your build; gfx1150/gfx1151 (Strix Point/Halo) added to the map (#1228)
+- AMD/ROCm: RX 6600/6600 XT now uses native gfx1032 PyTorch 2.10 kernels, including compatibility for TorchAudio's removed metadata/backend/info APIs, instead of crash-prone gfx1030 remapping (#124)
 - Windows blocking an engine file (Smart App Control, WDAC, or AppLocker) is now named, with the fix for personal and managed PCs — thanks @AdityaHemantBhat! (#1227)
 - A failed audio write (`LibsndfileError: System error.`) now names the target file, its folder's writability and the drive's free space — thanks @morozov28061995-boop! (#1221)
 - Dub URL ingest: a disk error now names the job folder, its writability and the drive's free space, instead of pointing at the system TEMP folder it never used — thanks @dustmaker124-ui! (#1225)

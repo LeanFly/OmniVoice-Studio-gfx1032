@@ -230,23 +230,55 @@ uv pip install --reinstall torch torchaudio \
   --index-url https://download.pytorch.org/whl/rocm6.4
 ```
 
-Once a ROCm build of PyTorch is in the venv, detection is automatic —
-`get_best_device()` returns the GPU (ROCm-built PyTorch reports through
-`torch.cuda.is_available()`), and OmniVoice auto-sets
-`HSA_OVERRIDE_GFX_VERSION` for consumer cards whose GFX ID isn't in the
-official ROCm support matrix. Relaunch and the Settings → System panel should
-report the GPU device instead of `cpu`. Verify the wheel sees your card:
+Once a ROCm build of PyTorch is in the venv, detection is automatic. Relaunch
+and the Settings → System panel should report the GPU device instead of
+`cpu`. Verify the wheel sees your card:
 
 ```bash
-uv run python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+.venv/bin/python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+### RX 6600 / 6600 XT (`gfx1032`)
+
+The legacy ROCm 6.4 wheel does not contain native `gfx1032` kernels. Do not set
+`HSA_OVERRIDE_GFX_VERSION=10.3.0`: an RX 6600 XT is not a gfx1030 card and can
+crash after the first kernel launch. OmniVoice leaves this override unset and
+falls back to CPU when only gfx1030 kernels are installed.
+
+AMD's multi-architecture ROCm packages provide a native, sanity-tested
+`device-gfx1032` build. This currently uses a newer PyTorch than OmniVoice's
+locked 2.8.0 environment, so treat it as an opt-in source-install path:
+
+```bash
+unset HSA_OVERRIDE_GFX_VERSION
+uv pip install --python .venv/bin/python --reinstall \
+  --index-url https://rocm.nightlies.amd.com/whl-multi-arch/ \
+  'torch[device-gfx1032]==2.10' 'torchaudio==2.10'
+uv pip install --python .venv/bin/python 'torchcodec==0.10'
+
+.venv/bin/rocm-sdk targets
+.venv/bin/python -c "import torch; print(torch.__version__, torch.version.hip); print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+The ROCm SDK target list must contain `gfx1032`, and the PyTorch probe must
+report the RX 6600 as available before starting OmniVoice. The multi-arch feed
+is AMD's development channel; if either probe fails, remove the packages and
+use CPU rather than restoring the gfx1030 override. Start with
+`./run.sh`; its `--no-sync` launch preserves the device-specific torch build.
+TorchAudio 2.10 uses TorchCodec for audio I/O, hence the matching
+`torchcodec==0.10` install above. On Ubuntu 24.04, install FFmpeg and Python's
+shared runtime so TorchCodec can load its native extension:
+
+```bash
+sudo apt install build-essential ffmpeg libpython3.12t64 libpython3.12-dev
 ```
 
 Notes:
 - ROCm is exercised far less than the default CUDA/MPS/CPU paths — it works,
   but expect rough edges on consumer cards and report what you hit.
-- Unsupported GFX (e.g. some consumer RDNA cards): if it still won't run, set
-  `HSA_OVERRIDE_GFX_VERSION` yourself (e.g. `export HSA_OVERRIDE_GFX_VERSION=11.0.0`)
-  to the nearest supported architecture before launching.
+- Unsupported GFX: install a ROCm build containing the GPU's native GFX target.
+  Architecture overrides are only safe for GPU families explicitly documented
+  as compatible; a nearby target number alone is not evidence of compatibility.
 - ZLUDA (CUDA-on-ROCm translation) can work but is unsupported here — prefer a
   native ROCm wheel.
 

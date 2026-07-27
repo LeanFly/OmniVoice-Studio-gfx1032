@@ -189,10 +189,12 @@ try:
 except Exception:
     pass
 
-# Prevent torchaudio from lazy-importing torchcodec (broken on some installs).
-# Proper fix = exclude torchcodec in pyproject.toml; this is a belt-and-braces guard.
-os.environ.setdefault("TORCHAUDIO_USE_TORCHCODEC", "0")
-sys.modules.setdefault("torchcodec", None)
+# Homebrew FFmpeg and TorchCodec have a fragile dynamic-linking combination on
+# macOS. Linux TorchAudio 2.9+ requires TorchCodec for load/save, so the guard
+# must not disable it on the opt-in ROCm/PyTorch 2.10 path.
+if sys.platform == "darwin":
+    os.environ.setdefault("TORCHAUDIO_USE_TORCHCODEC", "0")
+    sys.modules.setdefault("torchcodec", None)
 
 import torchaudio
 import warnings
@@ -239,7 +241,9 @@ except Exception:
     pass
 
 warnings.filterwarnings("ignore", category=UserWarning)
-torchaudio.set_audio_backend("soundfile")
+from core.torchaudio_compat import install_legacy_io_compat, select_soundfile_backend
+install_legacy_io_compat(torchaudio)
+select_soundfile_backend(torchaudio)
 
 
 class _WindowsSafeRotatingFileHandler(RotatingFileHandler):

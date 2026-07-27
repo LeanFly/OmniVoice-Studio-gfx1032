@@ -42,6 +42,12 @@ def test_accelerated_with_kernel_risk_caveat():
     assert KERNEL_RISK_MARKER in r["routing_reason"]
 
 
+def test_rocm_host_rocm_engine_accelerated():
+    r = resolve_routing(("cuda", "rocm", "cpu"), _caps("rocm"))
+    assert r == {"effective_device": "rocm", "routing_status": "accelerated",
+                 "routing_reason": None}
+
+
 def test_accelerated_ignores_advisory_notes():
     # Multi-GPU / VRAM advisory notes must NOT downgrade the accelerated badge.
     r = resolve_routing(("cuda", "cpu"),
